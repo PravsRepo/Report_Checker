@@ -2,11 +2,6 @@ import pdfplumber
 import pandas as pd
 import os
 
-# nltk.download('punkt')
-# nltk.download('averaged_perceptron_tagger_eng')
-# nltk.download('maxent_ne_chunker_tab')
-# nltk.download('words')
-
 from difflib import get_close_matches
 from pptx import Presentation
 from docx import Document
@@ -22,7 +17,6 @@ class ReportChecker:
     def read_file(self):
         df = pd.read_excel(
             self.file_name, sheet_name="Sheet1")
-        # print(df.head())
         return df
 
     def get_report_extn(self, df):
@@ -33,22 +27,17 @@ class ReportChecker:
             team_num = raw_name.replace("Team ", "")
             if extension == ".pptx":
                 to_write_data = self.read_ppt(f"{input_path}/{file}", team_num)
-                # self.write_excel(to_write_data, starting_row, team_num)
             elif extension == ".pdf":
                 to_write_data = self.read_pdf(f"{input_path}/{file}", team_num)
-                # self.write_excel(to_write_data, starting_row, team_num)
             elif extension == "docx":
                 self.read_word(f"{input_path}/{file}", team_num)
             else:
                 print(f"file name: {file}", team_num)
-            # starting_row = starting_row+len(to_write_data)
 
     def read_ppt(self, source_file, team_num):
         prs = Presentation(source_file)
-        # print(source_file)
         text_chunks = []
         text_runs = {}
-        # print(prs.slides[0])
         first_slide = prs.slides[0]
         for shape in first_slide.shapes:
             if shape.has_table:
@@ -57,7 +46,6 @@ class ReportChecker:
                     text_chunks.append(cell.text)
             else:
                 None
-        # print(text_chunks)
         text_runs[team_num] = text_chunks
         df = self.read_file()
         output = self.check_names(df, text_runs)
@@ -69,7 +57,6 @@ class ReportChecker:
             first_page = pdf.pages[0]
             text_chunks_pdf = first_page.extract_text()
         text_runs_pdf[team_num] = text_chunks_pdf
-        # print(text_runs_pdf)
         df = self.read_file()
         output = self.verify_names_with_run(df, text_runs_pdf)
         return output
@@ -82,7 +69,6 @@ class ReportChecker:
         team_num = next(iter(text_runs))
         team_df = df[df["Teams"] == int(team_num)]
         name_df = team_df["Name"]
-        # print(f"Name_df: {name_df}")
 
         stop_words = {"Student Name", "Year of Study", "Department", "ECE", "CSE",
                       "IT", "S. No.", "Roll #", "AIDS", "MECHANICAL", "Faculty Name"}
@@ -101,12 +87,9 @@ class ReportChecker:
 
         # First set of results - cross check the names with the dataframe
         pattern = "|".join(result)
-        # print(f"{team_num}:{pattern}")
         first_set_results = team_df["Name"].str.contains(pattern, case=False, na=False)
         first_set_results.name = "First set of results"
         first_set_results.reset_index(drop=True, inplace=True)
-        # print(f"First Set of results: {first_set_results}")
-
 
         # second set of results
         pattern = "|". join(result).lower()
@@ -121,22 +104,18 @@ class ReportChecker:
                         break
             matches.append(found)
         second_set_results = pd.DataFrame(matches, columns=["Second set of results"])
-        # print(f"Second set of results: {second_set_results}")
-
 
         # Third set of results 
         close_results = []
         for name in name_df:
             close_results.append(bool(get_close_matches(name, list(result))))
         third_set_results = pd.DataFrame(close_results, columns=["Third set of results"])
-        # print(f"Third set of results: {third_set_results}")
 
         # finalize the results
         second_set_results = second_set_results.squeeze()
         third_set_results = third_set_results.squeeze()
 
         final_results = first_set_results | second_set_results | third_set_results
-        # print(f"PPT: {final_results}")
         return final_results
 
 
@@ -145,7 +124,6 @@ class ReportChecker:
         team_num = next(iter(text_runs_pdf))
         team_df = df[df["Teams"] == int(team_num)]
         name_df = team_df["Name"]
-        # print(name_df)
 
         result = []
         stop_words = {"Student", "Year", "year", "of", "Study", "Department", "IT", "S.No.", "Date", "LPB01", "Presentation", "B.Tech", "Team", "College", "LEAP.",
@@ -164,11 +142,9 @@ class ReportChecker:
 
         # first set of results
         pattern = "|".join(result)
-        # print(f"{team_num}:{pattern}")
         first_set_results = team_df["Name"].str.contains(pattern, case=False, na=False)
         first_set_results.name = "First set of results"
         first_set_results.reset_index(drop=True, inplace=True)
-        # print(f"First set of results: {first_set_results}")
 
         # second set of results
         pattern = "|". join(result).lower()
@@ -182,26 +158,20 @@ class ReportChecker:
                         found = True
                         break
             matches.append(found)
-        # print(matches)
         second_set_results = pd.DataFrame(matches, columns=["Second set of results"])
-        # print(f"Second set of results: {second_set_results}")
 
 
         # third set of results - get close matches
         close_results = []
         for name in name_df:
-            # print(get_close_matches(name, list(result)))
             close_results.append(bool(get_close_matches(name, list(result))))
         third_set_results = pd.DataFrame(close_results, columns=["Third set of results"])
-        # print(f"Third set of results: {third_set_results}")
-
 
         # finalize the results
         second_set_results = second_set_results.squeeze()
         third_set_results = third_set_results.squeeze()
 
         final_results = first_set_results| second_set_results | third_set_results
-        # print(f"PDF: {final_results}")
         return final_results
 
     def write_excel(self, to_write_data, starting_row, team_num):
